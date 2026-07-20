@@ -14,7 +14,8 @@ confirms how much was actually eaten before it counts.
 
 - **Buddy the mascot** — five stages driven by protein-eaten vs. goal (squishy & sad → mighty lifter).
 - **Parent PIN mode** — kids log foods as *pending*; a grown-up enters the PIN and confirms the
-  serving amount before protein counts. The daily goal is also PIN-locked.
+  amount before protein counts. Adjust by quarter-servings, or **type the exact grams** when a
+  kid only picks at a portion. The daily goal is also PIN-locked.
 - **Food Explorer** — 79 healthy foods across **Proteins**, **Carbs & Produce**, and **Healthy Fats**
   (foods can belong to several categories, e.g. eggs are protein *and* fat).
 - **Treasure discovery** — the first time a food is confirmed, a collectible treasure is unlocked.
@@ -45,8 +46,9 @@ full-screen with its own icon and works offline afterwards.
 1. Enter the child's name.
 2. A grown-up sets a 4-digit **Parent PIN**.
 3. Tap **Food Explorer**, pick foods the child ate — each becomes a *pending* item.
-4. A grown-up taps **✓ Confirm**, enters the PIN, and adjusts servings → protein counts and Buddy
-   powers up. New foods pop a treasure!
+4. A grown-up taps **✓ Confirm**, enters the PIN, and sets how much was really eaten — either with
+   the ± serving stepper or by typing the grams directly → protein counts and Buddy powers up.
+   New foods pop a treasure!
 
 ## Project layout
 

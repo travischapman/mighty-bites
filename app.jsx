@@ -211,21 +211,56 @@ function PinPrompt({ title, subtitle, expectedPin, onSuccess, onCancel }) {
 function ServingSheet({ entry, onConfirm, onCancel }) {
   const food = getFood(entry.foodId);
   const [servings, setServings] = useState(entry.servings || 1);
-  const protein = round1(food.protein * servings);
-  const step = (d) => setServings((s) => Math.max(0.5, Math.min(12, round1(s + d))));
+  // Kids rarely eat a whole serving, so a grown-up can also type the grams
+  // straight in. A non-null `manualG` overrides the serving math entirely.
+  const [manualG, setManualG] = useState(null);
+
+  const stepProtein = round1(food.protein * servings);
+  const manualNum = manualG === null ? null : parseFloat(manualG);
+  const manualValid = manualNum !== null && isFinite(manualNum) && manualNum >= 0 && manualNum <= 200;
+  const protein = manualValid ? round1(manualNum) : stepProtein;
+  // Keep `servings` meaningful for the log row; zero-protein foods can't be inverted.
+  const finalServings = manualValid
+    ? (food.protein > 0 ? round1(protein / food.protein) : servings)
+    : servings;
+
+  const step = (d) => {
+    setManualG(null);
+    // round2, not round1 — quarter steps need two decimals to stay exact.
+    setServings((s) => Math.max(0.25, Math.min(12, Math.round((s + d) * 100) / 100)));
+  };
+  const canConfirm = manualG === null || manualValid;
+
   return (
     <div className="reveal-backdrop" onClick={onCancel}>
       <div className="reveal-card serving-card" onClick={(e) => e.stopPropagation()}>
         <div className="serving-emoji">{food.emoji}</div>
         <h2 className="name-prompt-title">{food.name}</h2>
-        <p className="name-prompt-sub">How many servings did they eat?<br /><em>1 serving = {food.serving}</em></p>
+        <p className="name-prompt-sub">How much did they actually eat?<br /><em>1 serving = {food.serving} · {food.protein}g</em></p>
         <div className="serving-stepper">
-          <button className="step-btn" onClick={() => step(-0.5)} aria-label="Less">−</button>
+          <button className="step-btn" onClick={() => step(-0.25)} aria-label="Less">−</button>
           <div className="serving-value"><b>{servings}</b><span>serving{servings === 1 ? "" : "s"}</span></div>
-          <button className="step-btn" onClick={() => step(0.5)} aria-label="More">+</button>
+          <button className="step-btn" onClick={() => step(0.25)} aria-label="More">+</button>
         </div>
-        <div className="serving-protein">= <b>{protein}g</b> protein 💪</div>
-        <button className="prize-close" onClick={() => onConfirm(entry.id, servings, protein)}>Confirm ✓</button>
+        <div className="serving-manual">
+          <label htmlFor="manual-g">Or type exact protein</label>
+          <div className="serving-manual-row">
+            <input id="manual-g" className="serving-manual-input" type="text" inputMode="decimal"
+              placeholder={String(stepProtein)} value={manualG === null ? "" : manualG}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^\d.]/g, "").slice(0, 5);
+                setManualG(v === "" ? null : v);
+              }} />
+            <span className="serving-manual-unit">g</span>
+            {manualG !== null && (
+              <button type="button" className="serving-manual-clear" onClick={() => setManualG(null)}>use servings</button>
+            )}
+          </div>
+          {manualG !== null && !manualValid && <p className="pin-error">Enter grams between 0 and 200.</p>}
+        </div>
+        <div className="serving-protein">= <b>{canConfirm ? protein : "—"}g</b> protein 💪</div>
+        <button className="prize-close" disabled={!canConfirm}
+          onClick={() => canConfirm && onConfirm(entry.id, finalServings, protein)}>Confirm ✓</button>
         <button type="button" className="pin-cancel" onClick={onCancel}>Cancel</button>
       </div>
     </div>

@@ -302,6 +302,14 @@ body {
 .serving-value span { font-size: 12px; color: var(--ink-soft); }
 .serving-protein { font-family: "Fredoka", sans-serif; font-size: 20px; margin: 10px 0 4px; color: var(--ink); }
 .serving-protein b { color: var(--chip); }
+.serving-manual { margin: 10px 0 2px; padding-top: 12px; border-top: 1px dashed rgba(0,0,0,.12); }
+.serving-manual label { display: block; font-size: 12px; color: var(--ink-soft); margin-bottom: 6px; }
+.serving-manual-row { display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.serving-manual-input { width: 86px; padding: 8px 10px; border: 2px solid rgba(0,0,0,.12); border-radius: 12px; background: rgba(255,255,255,.75); font-family: "Fredoka", sans-serif; font-size: 22px; text-align: center; color: var(--ink); }
+.serving-manual-input:focus { outline: none; border-color: var(--accent); }
+.serving-manual-unit { font-family: "Fredoka", sans-serif; font-size: 18px; color: var(--ink-soft); }
+.serving-manual-clear { margin-left: 4px; border: none; background: none; font-size: 12px; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.prize-close:disabled { opacity: .45; cursor: not-allowed; }
 
 /* Celebration */
 .celebrate-card { padding: 36px 32px 30px; }
