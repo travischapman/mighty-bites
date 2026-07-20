@@ -1,5 +1,7 @@
 # Mighty Bites 💪🍎
 
+### ▶️ **[Play it here](https://travischapman.github.io/mighty-bites/)**
+
 A playful, kid-friendly PWA to help a child **try new healthy foods** and **hit a daily
 protein goal**. Buddy the mascot starts squishy and glum and powers up into a muscular
 weightlifter as protein adds up — hit the goal and he lifts heavy weights overhead with a
@@ -34,8 +36,9 @@ Then open **http://localhost:8080** in a browser.
 
 ### Install to a phone (home-screen app)
 
-Serve it over HTTPS (or `localhost`) and use the browser's **Add to Home Screen** / **Install**
-option. It launches full-screen with its own icon and works offline.
+Open **https://travischapman.github.io/mighty-bites/** on the phone and use the browser's
+**Add to Home Screen** (iOS Safari) or **Install app** (Android Chrome) option. It launches
+full-screen with its own icon and works offline afterwards.
 
 ## First run
 
