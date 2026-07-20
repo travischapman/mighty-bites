@@ -1,0 +1,13 @@
+# OS / editor junk
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Node (not used at runtime — this app has no build step)
+node_modules/
+npm-debug.log*
+
+# Local scratch
+*.bak

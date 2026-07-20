@@ -1,0 +1,17 @@
+{
+  "name": "Mighty Bites — Protein & Healthy Food Tracker",
+  "short_name": "Mighty Bites",
+  "description": "A playful way for kids to try healthy foods and power up on protein.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF4E8",
+  "theme_color": "#FF6F3C",
+  "categories": ["health", "kids", "food"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
