@@ -1,5 +1,5 @@
 // Mighty Bites — service worker (cache-first app shell for offline + install).
-const CACHE = "mighty-bites-v2";
+const CACHE = "mighty-bites-v3";
 
 const CORE = [
   "./",

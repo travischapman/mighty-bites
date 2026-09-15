@@ -324,8 +324,8 @@ function App() {
   const [days, setDays] = useState({});
   const [triedFoods, setTriedFoods] = useState({});
   const [treasures, setTreasures] = useState([]);
-  // Tournament Mode: wins + earned awards survive reloads (same STORAGE_KEY).
-  const [tournament, setTournament] = useState({ wins: 0, awards: [] });
+  // Tournament Mode: wins + awards + lastPlayedDay survive reloads (same STORAGE_KEY).
+  const [tournament, setTournament] = useState({ wins: 0, awards: [], lastPlayedDay: null });
 
   const [view, setView] = useState("home");          // home | foods | treasures | tournament
   const [exploreCat, setExploreCat] = useState("protein");
@@ -347,6 +347,7 @@ function App() {
     if (s?.tournament) setTournament({
       wins: s.tournament.wins || 0,
       awards: Array.isArray(s.tournament.awards) ? s.tournament.awards : [],
+      lastPlayedDay: s.tournament.lastPlayedDay || null,
     });
     setHydrated(true);
   }, []);
@@ -366,6 +367,8 @@ function App() {
   const todayLog = (days[today] || { log: [] }).log || [];
   const todayProtein = todayLog.filter((e) => e.confirmed).reduce((s, e) => s + e.protein, 0);
   const tournamentUnlocked = t.dailyGoal > 0 && todayProtein >= t.dailyGoal;
+  // Once-per-calendar-day gate (in addition to protein unlock).
+  const tournamentPlayedToday = tournament.lastPlayedDay === today;
   const remainingToGoal = Math.max(0, Math.ceil(t.dailyGoal - todayProtein));
   const triedCount = Object.keys(triedFoods).length;
 
@@ -449,6 +452,15 @@ function App() {
     });
   }, []);
 
+  // Mark today's attempt as soon as a tournament starts (abandon still burns the day).
+  const markTournamentPlayed = useCallback(() => {
+    const day = todayKey();
+    setTournament((cur) => {
+      if (cur.lastPlayedDay === day) return cur;
+      return { ...cur, lastPlayedDay: day };
+    });
+  }, []);
+
   // Persist tournament outcome. Awards are granted once; championships always count.
   const recordTournamentResult = useCallback((placement) => {
     const awards = tournament.awards || [];
@@ -460,7 +472,7 @@ function App() {
         ? curAwards
         : [...curAwards, { id: placement, earnedAt: Date.now(), day: todayKey() }];
       const nextWins = placement === "champion" ? (cur.wins || 0) + 1 : (cur.wins || 0);
-      return { wins: nextWins, awards: nextAwards };
+      return { ...cur, wins: nextWins, awards: nextAwards };
     });
     return { newlyGranted };
   }, [tournament.awards]);
@@ -535,6 +547,7 @@ function App() {
               unlocked={tournamentUnlocked}
               remainingG={remainingToGoal}
               wins={tournament.wins || 0}
+              playedToday={tournamentPlayedToday}
               onOpen={() => setView("tournament")}
             />
           </section>
@@ -643,6 +656,8 @@ function App() {
           remainingG={remainingToGoal}
           kidName={t.kidName}
           stats={tournament}
+          playedToday={tournamentPlayedToday}
+          onMarkPlayed={markTournamentPlayed}
           onRecordResult={recordTournamentResult}
           onGoHome={() => setView("home")}
           playSound={playSound}

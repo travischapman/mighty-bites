@@ -21,8 +21,8 @@ confirms how much was actually eaten before it counts.
 - **Treasure discovery** — the first time a food is confirmed, a collectible treasure is unlocked.
 - **Daily protein goal** — default 40 g, adjustable by a parent (10–100 g).
 - **Tournament Mode** — unlocks after hitting the day's protein goal. Play a kid-friendly
-  Flex / Jump / Spin bracket against food-themed foes, earn awards (champion, runner-up,
-  participation), and track championships in localStorage.
+  Flex / Jump / Spin bracket against food-themed foes **once per calendar day**, earn awards
+  (champion, runner-up, participation), and track championships in localStorage.
 - **Installable, offline PWA** — React, Babel, and the fonts are all vendored locally, so it works
   with no internet after the first load.
 

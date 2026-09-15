@@ -358,6 +358,29 @@ body {
 .tourney-intro { color: var(--ink-soft); font-size: 15px; line-height: 1.5; margin: 0 0 18px; }
 .tourney-start-btn { max-width: 360px; }
 
+.tourney-daily-gate {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  margin: 4px 0 8px; text-align: center;
+}
+.tourney-daily-emoji { font-size: 36px; line-height: 1; }
+.tourney-daily-msg {
+  color: var(--ink-soft); font-size: 15px; line-height: 1.45; margin: 0;
+  max-width: 340px; font-weight: 700;
+}
+.add-food-cta:disabled, .tourney-start-btn:disabled {
+  opacity: .55; cursor: not-allowed; transform: none;
+  box-shadow: 0 4px 0 rgba(0,0,0,.1), 0 8px 16px rgba(0,0,0,.08);
+  filter: grayscale(.15);
+}
+.add-food-cta:disabled:hover, .tourney-start-btn:disabled:hover {
+  transform: none;
+  box-shadow: 0 4px 0 rgba(0,0,0,.1), 0 8px 16px rgba(0,0,0,.08);
+}
+.tourney-home-card.done-today {
+  background: color-mix(in srgb, var(--chip) 18%, #fff);
+  border-color: color-mix(in srgb, var(--chip) 35%, transparent);
+}
+
 .tourney-locked {
   text-align: center; background: var(--card); border: 1px solid var(--card-ring);
   border-radius: 24px; padding: 36px 24px; box-shadow: var(--shadow-sm);

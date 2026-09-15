@@ -226,7 +226,7 @@ function BracketBoard({ kidName, bracket, highlight }) {
 
 // ── Main tournament view (unlocked) ─────────────────────────────────────────
 // phase: lobby | semi | side-result | final | done
-function TournamentView({ unlocked, remainingG, kidName, stats, onRecordResult, onGoHome, playSound }) {
+function TournamentView({ unlocked, remainingG, kidName, stats, playedToday, onMarkPlayed, onRecordResult, onGoHome, playSound }) {
   const [phase, setPhase] = useState("lobby");
   const [bracket, setBracket] = useState(null);
   const [placement, setPlacement] = useState(null); // champion | runner-up | participant
@@ -236,7 +236,10 @@ function TournamentView({ unlocked, remainingG, kidName, stats, onRecordResult, 
   const awardsEarned = new Set((stats.awards || []).map((a) => a.id));
   const wins = stats.wins || 0;
 
+  // Starting counts as today's attempt (finish or abandon mid-bracket still burns the day).
   const startTournament = () => {
+    if (playedToday) return;
+    if (typeof onMarkPlayed === "function") onMarkPlayed();
     const picked = pickOpponents();
     setBracket({
       kidOpp: picked.kidOpp,
@@ -312,9 +315,21 @@ function TournamentView({ unlocked, remainingG, kidName, stats, onRecordResult, 
             finalistOpp: null,
           }} highlight={-1} />
 
-          <button type="button" className="add-food-cta tourney-start-btn" onClick={startTournament}>
-            Start Tournament! 🥊
-          </button>
+          {playedToday ? (
+            <div className="tourney-daily-gate" role="status">
+              <span className="tourney-daily-emoji" aria-hidden="true">😴🏟️</span>
+              <p className="tourney-daily-msg">
+                You already battled today! Come back tomorrow for another tournament.
+              </p>
+              <button type="button" className="add-food-cta tourney-start-btn" disabled>
+                Already played today
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="add-food-cta tourney-start-btn" onClick={startTournament}>
+              Start Tournament! 🥊
+            </button>
+          )}
 
           <div className="tourney-awards">
             <h4 className="tourney-awards-title">Awards</h4>
@@ -372,12 +387,17 @@ function TournamentView({ unlocked, remainingG, kidName, stats, onRecordResult, 
           <BracketBoard kidName={kidName} bracket={bracket} highlight={2} />
           <p className="tourney-done-msg">
             {placement === "champion" && "You are the Mighty Champion! 💪"}
-            {placement === "runner-up" && "Runner-up — rematch anytime!"}
-            {placement === "participant" && "Participation earned — train up and try again!"}
+            {placement === "runner-up" && "Runner-up — awesome fight!"}
+            {placement === "participant" && "Participation earned — great effort!"}
           </p>
-          <button type="button" className="add-food-cta tourney-start-btn" onClick={startTournament}>
-            Play again! 🔄
-          </button>
+          <div className="tourney-daily-gate" role="status">
+            <p className="tourney-daily-msg">
+              That's your tournament for today — come back tomorrow to play again!
+            </p>
+            <button type="button" className="add-food-cta tourney-start-btn" disabled>
+              Come back tomorrow 🌅
+            </button>
+          </div>
           <button type="button" className="tourney-secondary-btn" onClick={() => setPhase("lobby")}>
             Back to lobby
           </button>
@@ -398,7 +418,7 @@ function TournamentView({ unlocked, remainingG, kidName, stats, onRecordResult, 
 }
 
 // Home-page entry / teaser card
-function TournamentHomeCard({ unlocked, remainingG, wins, onOpen }) {
+function TournamentHomeCard({ unlocked, remainingG, wins, playedToday, onOpen }) {
   if (!unlocked) {
     return (
       <button type="button" className="tourney-home-card locked" onClick={onOpen}>
@@ -407,6 +427,18 @@ function TournamentHomeCard({ unlocked, remainingG, wins, onOpen }) {
           <b>Tournament locked</b>
           <em>{remainingG > 0 ? `${remainingG}g protein to unlock` : "Hit today's goal to unlock"}</em>
         </span>
+      </button>
+    );
+  }
+  if (playedToday) {
+    return (
+      <button type="button" className="tourney-home-card done-today" onClick={onOpen}>
+        <span className="tourney-home-emoji">😴🏟️</span>
+        <span className="tourney-home-text">
+          <b>Tournament done for today</b>
+          <em>{wins > 0 ? `${wins} championship${wins === 1 ? "" : "s"} · Come back tomorrow!` : "Come back tomorrow for another go!"}</em>
+        </span>
+        <span className="tourney-home-go">See →</span>
       </button>
     );
   }
