@@ -1,5 +1,5 @@
 // Mighty Bites — service worker (cache-first app shell for offline + install).
-const CACHE = "mighty-bites-v1";
+const CACHE = "mighty-bites-v2";
 
 const CORE = [
   "./",
@@ -10,6 +10,7 @@ const CORE = [
   "treasures.jsx",
   "tweaks-panel.jsx",
   "mascot.jsx",
+  "tournament.jsx",
   "app.jsx",
   "vendor/react.production.min.js",
   "vendor/react-dom.production.min.js",
