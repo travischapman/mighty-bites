@@ -2,7 +2,8 @@
 // A kid tries healthy foods and tracks protein. Foods are logged as *pending*
 // until a parent confirms the amount with a PIN. Confirmed protein powers up
 // Buddy the mascot; hitting the daily goal makes Buddy a muscular weightlifter.
-// First time a food is confirmed, a treasure is unlocked. All local, PWA.
+// First time a food is confirmed, a treasure is unlocked. Hitting the goal also
+// unlocks Tournament Mode. All local, PWA.
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
@@ -323,8 +324,10 @@ function App() {
   const [days, setDays] = useState({});
   const [triedFoods, setTriedFoods] = useState({});
   const [treasures, setTreasures] = useState([]);
+  // Tournament Mode: wins + earned awards survive reloads (same STORAGE_KEY).
+  const [tournament, setTournament] = useState({ wins: 0, awards: [] });
 
-  const [view, setView] = useState("home");          // home | foods | treasures
+  const [view, setView] = useState("home");          // home | foods | treasures | tournament
   const [exploreCat, setExploreCat] = useState("protein");
   const [pinRequest, setPinRequest] = useState(null);
   const [confirmEntry, setConfirmEntry] = useState(null);
@@ -341,12 +344,16 @@ function App() {
     if (s?.days) setDays(s.days);
     if (s?.triedFoods) setTriedFoods(s.triedFoods);
     if (s?.treasures) setTreasures(s.treasures);
+    if (s?.tournament) setTournament({
+      wins: s.tournament.wins || 0,
+      awards: Array.isArray(s.tournament.awards) ? s.tournament.awards : [],
+    });
     setHydrated(true);
   }, []);
   useEffect(() => {
     if (!hydrated) return;
-    saveState({ days, triedFoods, treasures });
-  }, [hydrated, days, triedFoods, treasures]);
+    saveState({ days, triedFoods, treasures, tournament });
+  }, [hydrated, days, triedFoods, treasures, tournament]);
 
   const isToday = viewedDay === today;
   const dayData = days[viewedDay] || { log: [], goalCelebrated: false };
@@ -355,6 +362,11 @@ function App() {
   const pendingEntries = log.filter((e) => !e.confirmed);
   const pct = t.dailyGoal > 0 ? confirmedProtein / t.dailyGoal : 0;
   const reachedGoal = t.dailyGoal > 0 && confirmedProtein >= t.dailyGoal;
+  // Tournament unlocks from *today's* confirmed protein (browsing past days doesn't lock it).
+  const todayLog = (days[today] || { log: [] }).log || [];
+  const todayProtein = todayLog.filter((e) => e.confirmed).reduce((s, e) => s + e.protein, 0);
+  const tournamentUnlocked = t.dailyGoal > 0 && todayProtein >= t.dailyGoal;
+  const remainingToGoal = Math.max(0, Math.ceil(t.dailyGoal - todayProtein));
   const triedCount = Object.keys(triedFoods).length;
 
   const patchDay = useCallback((k, patch) => {
@@ -437,6 +449,22 @@ function App() {
     });
   }, []);
 
+  // Persist tournament outcome. Awards are granted once; championships always count.
+  const recordTournamentResult = useCallback((placement) => {
+    const awards = tournament.awards || [];
+    const newlyGranted = !awards.some((a) => a.id === placement);
+    setTournament((cur) => {
+      const curAwards = cur.awards || [];
+      const has = curAwards.some((a) => a.id === placement);
+      const nextAwards = has
+        ? curAwards
+        : [...curAwards, { id: placement, earnedAt: Date.now(), day: todayKey() }];
+      const nextWins = placement === "champion" ? (cur.wins || 0) + 1 : (cur.wins || 0);
+      return { wins: nextWins, awards: nextAwards };
+    });
+    return { newlyGranted };
+  }, [tournament.awards]);
+
   const resetToday = () => patchDay(today, { log: [], goalCelebrated: false });
 
   const openSettings = () => window.postMessage({ type: "__activate_edit_mode" }, "*");
@@ -484,6 +512,9 @@ function App() {
         <button className={`tab ${view === "home" ? "active" : ""}`} onClick={() => setView("home")}>🏠 Home</button>
         <button className={`tab ${view === "foods" ? "active" : ""}`} onClick={() => setView("foods")}>🍎 Food Explorer</button>
         <button className={`tab ${view === "treasures" ? "active" : ""}`} onClick={() => setView("treasures")}>💎 Treasures</button>
+        <button className={`tab ${view === "tournament" ? "active" : ""}`} onClick={() => setView("tournament")}>
+          {tournamentUnlocked ? "🏟️ Tournament" : "🔒 Tournament"}
+        </button>
       </nav>
 
       {/* ── HOME ─────────────────────────────────────────────────────────── */}
@@ -500,6 +531,12 @@ function App() {
               <div className="encourage past">That day reached <b>{Math.round(confirmedProtein)} of {t.dailyGoal}g</b>.</div>
             )}
             <button className="add-food-cta" onClick={() => setView("foods")}>＋ Add a food</button>
+            <TournamentHomeCard
+              unlocked={tournamentUnlocked}
+              remainingG={remainingToGoal}
+              wins={tournament.wins || 0}
+              onOpen={() => setView("tournament")}
+            />
           </section>
 
           <section className="right-col">
@@ -597,6 +634,19 @@ function App() {
             </div>
           )}
         </main>
+      )}
+
+      {/* ── TOURNAMENT ───────────────────────────────────────────────────── */}
+      {view === "tournament" && (
+        <TournamentView
+          unlocked={tournamentUnlocked}
+          remainingG={remainingToGoal}
+          kidName={t.kidName}
+          stats={tournament}
+          onRecordResult={recordTournamentResult}
+          onGoHome={() => setView("home")}
+          playSound={playSound}
+        />
       )}
 
       {toast && <div className="toast">{toast}</div>}

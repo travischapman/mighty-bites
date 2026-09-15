@@ -20,6 +20,9 @@ confirms how much was actually eaten before it counts.
   (foods can belong to several categories, e.g. eggs are protein *and* fat).
 - **Treasure discovery** — the first time a food is confirmed, a collectible treasure is unlocked.
 - **Daily protein goal** — default 40 g, adjustable by a parent (10–100 g).
+- **Tournament Mode** — unlocks after hitting the day's protein goal. Play a kid-friendly
+  Flex / Jump / Spin bracket against food-themed foes, earn awards (champion, runner-up,
+  participation), and track championships in localStorage.
 - **Installable, offline PWA** — React, Babel, and the fonts are all vendored locally, so it works
   with no internet after the first load.
 
@@ -29,7 +32,7 @@ It's a static site — no build step. Serve the folder over HTTP (a service work
 not `file://`):
 
 ```bash
-cd protein-tracker
+cd mighty-bites
 python3 -m http.server 8080
 ```
 
@@ -59,6 +62,7 @@ full-screen with its own icon and works offline afterwards.
 | `foods.jsx` | The 79-food database (protein grams, servings, multi-category tags) |
 | `treasures.jsx` | 100 collectible treasures + rarity-weighted draw |
 | `mascot.jsx` | `Buddy` — the CSS/DOM mascot with five strength stages |
+| `tournament.jsx` | Tournament Mode: bracket, matches, awards |
 | `tweaks-panel.jsx` | Settings panel toolkit (name, PIN-locked goal, reset) |
 | `styles.css` | All styling, including Buddy's animations |
 | `manifest.webmanifest`, `sw.js`, `icons/` | PWA manifest, offline service worker, app icons |
