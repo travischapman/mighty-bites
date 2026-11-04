@@ -1,7 +1,7 @@
 {
   "name": "Mighty Bites — Protein & Healthy Food Tracker",
   "short_name": "Mighty Bites",
-  "description": "A playful way for kids to try healthy foods and power up on protein.",
+  "description": "A playful way for kids to try healthy foods and track protein, carbs, fat, and fiber.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

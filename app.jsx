@@ -1,9 +1,10 @@
 // Mighty Bites — main app.
-// A kid tries healthy foods and tracks protein. Foods are logged as *pending*
-// until a parent confirms the amount with a PIN. Confirmed protein powers up
-// Buddy the mascot; hitting the daily goal makes Buddy a muscular weightlifter.
-// First time a food is confirmed, a treasure is unlocked. Hitting the goal also
-// unlocks Tournament Mode. All local, PWA.
+// A kid tries healthy foods and tracks protein, carbs, fat, and fiber. Foods are
+// logged as *pending* until a parent confirms the amount with a PIN. Confirmed
+// protein powers up Buddy the mascot; hitting the daily protein goal makes Buddy
+// a muscular weightlifter. Carbs, fat, and fiber ride along on the same portion
+// (see nutrition.js) but they don't change Buddy or Tournament Mode.
+// First time a food is confirmed, a treasure is unlocked. All local, PWA.
 
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
@@ -132,7 +133,7 @@ function GoalCelebration({ kidName, grams, onClose }) {
       <div className="reveal-card celebrate-card" onClick={(e) => e.stopPropagation()}>
         <div className="celebrate-hero">🏋️</div>
         <h2 className="name-prompt-title">You did it{kidName ? `, ${kidName}` : ""}!</h2>
-        <p className="celebrate-sub">Buddy got all <b>{Math.round(grams)}g</b> of protein and is
+        <p className="celebrate-sub">Buddy got all <b>{MightyNutrition.formatGrams(grams)}g</b> of protein and is
           <b> MIGHTY STRONG</b> — lifting heavy weights! 💪</p>
         <button className="prize-close" onClick={onClose}>Yeah! 🎉</button>
       </div>
@@ -212,32 +213,33 @@ function PinPrompt({ title, subtitle, expectedPin, onSuccess, onCancel }) {
 function ServingSheet({ entry, onConfirm, onCancel }) {
   const food = getFood(entry.foodId);
   const [servings, setServings] = useState(entry.servings || 1);
-  // Kids rarely eat a whole serving, so a grown-up can also type the grams
-  // straight in. A non-null `manualG` overrides the serving math entirely.
+  // Kids rarely eat a whole serving, so a grown-up can also type the protein
+  // grams. Carbs, fat, and fiber then scale by that same fraction of a serving
+  // (nutrition.js). A food with no protein keeps the stepper for those three.
   const [manualG, setManualG] = useState(null);
 
-  const stepProtein = round1(food.protein * servings);
+  const stepPortion = MightyNutrition.portionMacros(food, { servings });
   const manualNum = manualG === null ? null : parseFloat(manualG);
   const manualValid = manualNum !== null && isFinite(manualNum) && manualNum >= 0 && manualNum <= 200;
-  const protein = manualValid ? round1(manualNum) : stepProtein;
-  // Keep `servings` meaningful for the log row; zero-protein foods can't be inverted.
-  const finalServings = manualValid
-    ? (food.protein > 0 ? round1(protein / food.protein) : servings)
-    : servings;
+  const portion = manualG === null
+    ? stepPortion
+    : (manualValid ? MightyNutrition.portionMacros(food, { servings, typedProtein: manualNum }) : null);
+  const canConfirm = portion !== null;
 
   const step = (d) => {
     setManualG(null);
     // round2, not round1 — quarter steps need two decimals to stay exact.
     setServings((s) => Math.max(0.25, Math.min(12, Math.round((s + d) * 100) / 100)));
   };
-  const canConfirm = manualG === null || manualValid;
+
+  const gram = (n) => (n == null ? "—" : `${MightyNutrition.formatGrams(n)}g`);
 
   return (
     <div className="reveal-backdrop" onClick={onCancel}>
       <div className="reveal-card serving-card" onClick={(e) => e.stopPropagation()}>
         <div className="serving-emoji">{food.emoji}</div>
         <h2 className="name-prompt-title">{food.name}</h2>
-        <p className="name-prompt-sub">How much did they actually eat?<br /><em>1 serving = {food.serving} · {food.protein}g</em></p>
+        <p className="name-prompt-sub">How much did they actually eat?<br /><em>1 serving = {food.serving}</em></p>
         <div className="serving-stepper">
           <button className="step-btn" onClick={() => step(-0.25)} aria-label="Less">−</button>
           <div className="serving-value"><b>{servings}</b><span>serving{servings === 1 ? "" : "s"}</span></div>
@@ -247,7 +249,7 @@ function ServingSheet({ entry, onConfirm, onCancel }) {
           <label htmlFor="manual-g">Or type exact protein</label>
           <div className="serving-manual-row">
             <input id="manual-g" className="serving-manual-input" type="text" inputMode="decimal"
-              placeholder={String(stepProtein)} value={manualG === null ? "" : manualG}
+              placeholder={String(stepPortion.protein)} value={manualG === null ? "" : manualG}
               onChange={(e) => {
                 const v = e.target.value.replace(/[^\d.]/g, "").slice(0, 5);
                 setManualG(v === "" ? null : v);
@@ -258,12 +260,97 @@ function ServingSheet({ entry, onConfirm, onCancel }) {
             )}
           </div>
           {manualG !== null && !manualValid && <p className="pin-error">Enter grams between 0 and 200.</p>}
+          {manualG !== null && manualValid && (
+            <p className="serving-scale-note">
+              {food.protein > 0
+                ? "Carbs, fat, and fiber shrink or grow with that protein."
+                : "This food has no protein, so the serving buttons still set the rest."}
+            </p>
+          )}
         </div>
-        <div className="serving-protein">= <b>{canConfirm ? protein : "—"}g</b> protein 💪</div>
+        <div className="serving-macros">
+          <span>💪 <b>{gram(portion && portion.protein)}</b> protein</span>
+          <span>🍎 <b>{gram(portion && portion.carbs)}</b> carbs</span>
+          <span>🥑 <b>{gram(portion && portion.fat)}</b> fat</span>
+          <span>🌱 <b>{gram(portion && portion.fiber)}</b> fiber</span>
+        </div>
+        {portion && (
+          <EnergyMix protein={portion.protein} carbs={portion.carbs} fat={portion.fat} fiber={portion.fiber} />
+        )}
         <button className="prize-close" disabled={!canConfirm}
-          onClick={() => canConfirm && onConfirm(entry.id, finalServings, protein)}>Confirm ✓</button>
+          onClick={() => canConfirm && onConfirm(entry.id, portion)}>Confirm ✓</button>
         <button type="button" className="pin-cancel" onClick={onCancel}>Cancel</button>
       </div>
+    </div>
+  );
+}
+
+// ── Calorie split for one food (protein / carbs / fat) plus fiber grams ─────
+function EnergyMix({ protein, carbs, fat, fiber, compact }) {
+  const pct = MightyNutrition.macroPercents({ protein, carbs, fat, fiber });
+  const label = pct.hasEnergy
+    ? `Calories: ${pct.protein}% protein, ${pct.carbs}% carbs, ${pct.fat}% fat. ${MightyNutrition.formatGrams(fiber)} grams fiber.`
+    : `No calories to split. ${MightyNutrition.formatGrams(fiber)} grams fiber.`;
+  return (
+    <span className={`energy-mix${compact ? " compact" : ""}`} role="img" aria-label={label}>
+      <span className="energy-bar">
+        {pct.hasEnergy ? (
+          <>
+            {pct.protein > 0 && <span className="seg-protein" style={{ width: `${pct.protein}%` }} />}
+            {pct.carbs > 0 && <span className="seg-carbs" style={{ width: `${pct.carbs}%` }} />}
+            {pct.fat > 0 && <span className="seg-fat" style={{ width: `${pct.fat}%` }} />}
+          </>
+        ) : <span className="seg-empty" />}
+      </span>
+      <span className="energy-nums">
+        <span className="en-protein">💪 {pct.protein}%</span>
+        <span className="en-carbs">🍎 {pct.carbs}%</span>
+        <span className="en-fat">🥑 {pct.fat}%</span>
+      </span>
+      <span className="energy-fiber">🌱 {MightyNutrition.formatGrams(fiber)}g fiber</span>
+      <span className="energy-caption">{pct.hasEnergy ? "of its calories" : "no calories to split"}</span>
+    </span>
+  );
+}
+
+const FUEL_ROWS = [
+  { key: "protein", emoji: "💪", name: "Protein", hint: "muscles", color: "#FF6F3C" },
+  { key: "carbs", emoji: "🍎", name: "Carbs", hint: "play energy", color: "#2FA45C" },
+  { key: "fat", emoji: "🥑", name: "Fat", hint: "brain fuel", color: "#7A4FE0" },
+  { key: "fiber", emoji: "🌱", name: "Fiber", hint: "tummy helper", color: "#1C9BB5" },
+];
+
+// ── Today's four macros. Protein stays the big goal; these are the whole picture.
+function MacroBoard({ title, totals, unknown, goals }) {
+  const anyUnknown = FUEL_ROWS.some((r) => unknown[r.key]);
+  return (
+    <div className="macro-board">
+      <div className="macro-board-title">{title}</div>
+      {FUEL_ROWS.map((r) => {
+        const missing = !!unknown[r.key];
+        const value = totals[r.key] || 0;
+        const goal = goals[r.key] > 0 ? goals[r.key] : 0;
+        // A partial sum still shows. "—" only when we know nothing for that macro.
+        const showUnknown = missing && !(value > 0);
+        const pct = !showUnknown && goal > 0 ? Math.max(0, Math.min(1, value / goal)) : 0;
+        return (
+          <div key={r.key} className={`macro-row${r.key === "protein" ? " is-protein" : ""}`}>
+            <div className="macro-row-top">
+              <span className="macro-name">{r.emoji} {r.name}</span>
+              <span className="macro-amt">
+                {showUnknown ? "—" : `${MightyNutrition.formatGrams(value)}g`}
+                <em> / {goal}g</em>
+              </span>
+            </div>
+            <div className="macro-track" aria-hidden="true">
+              <div className="macro-fill" style={{ width: `${pct * 100}%`, background: r.color }} />
+            </div>
+            <div className="macro-hint">{r.hint}</div>
+          </div>
+        );
+      })}
+      <p className="macro-foot">Protein powers Buddy. The other bars are extra fuel.</p>
+      {anyUnknown && <p className="macro-unknown">Some older bites didn't remember every number.</p>}
     </div>
   );
 }
@@ -271,14 +358,17 @@ function ServingSheet({ entry, onConfirm, onCancel }) {
 // ── Food card (Explorer) ────────────────────────────────────────────────────
 function FoodCard({ food, tried, onAdd }) {
   const catColor = { protein: "#E8571E", carb: "#2FA45C", fat: "#7A4FE0" };
+  const pct = MightyNutrition.macroPercents(food);
   return (
     <button className={`food-card${tried ? " tried" : ""}`} onClick={() => onAdd(food)}
-      title={`${food.name} · ${food.protein}g protein per ${food.serving}`}>
+      data-food-id={food.id}
+      title={`${food.name}: ${pct.protein}% protein, ${pct.carbs}% carbs, ${pct.fat}% fat, ${food.fiber}g fiber per ${food.serving}`}>
       {tried && <span className="food-check">✓</span>}
       {!tried && <span className="food-new">NEW</span>}
       <span className="food-emoji">{food.emoji}</span>
       <span className="food-name">{food.name}</span>
-      <span className="food-protein">{food.protein}g</span>
+      <EnergyMix compact protein={food.protein} carbs={food.carbs} fat={food.fat} fiber={food.fiber} />
+      <span className="food-protein">{MightyNutrition.formatGrams(food.protein)}g protein</span>
       <span className="food-serving">per {food.serving}</span>
       <span className="food-tags">
         {food.categories.map((c) => <i key={c} style={{ background: catColor[c] }} title={c} />)}
@@ -296,7 +386,7 @@ function Meter({ grams, goal, theme, reached }) {
         <div className="meter-fill" style={{ width: `${pct * 100}%`, background: theme.meter }} />
       </div>
       <div className="meter-label">
-        <b>{Math.round(grams)}g</b> <span>of {goal}g protein</span>
+        <b>{MightyNutrition.formatGrams(grams)}g</b> <span>of {goal}g protein</span>
       </div>
     </div>
   );
@@ -312,7 +402,13 @@ const THEMES = {
             meter: "linear-gradient(180deg,#B08CF5 0%,#7A4FE0 100%)" },
 };
 
-const TWEAK_DEFAULTS = { kidName: "", parentPin: "", dailyGoal: 40, theme: "power" };
+const TWEAK_DEFAULTS = {
+  kidName: "", parentPin: "", theme: "power",
+  dailyGoal: MightyNutrition.DEFAULT_GOALS.protein,
+  carbGoal: MightyNutrition.DEFAULT_GOALS.carbs,
+  fatGoal: MightyNutrition.DEFAULT_GOALS.fat,
+  fiberGoal: MightyNutrition.DEFAULT_GOALS.fiber,
+};
 
 // ── Main app ────────────────────────────────────────────────────────────────
 function App() {
@@ -341,13 +437,16 @@ function App() {
   const [hydrated, setHydrated] = useState(false);
   useEffect(() => {
     const s = loadState();
-    if (s?.days) setDays(s.days);
-    if (s?.triedFoods) setTriedFoods(s.triedFoods);
-    if (s?.treasures) setTreasures(s.treasures);
-    if (s?.tournament) setTournament({
-      wins: s.tournament.wins || 0,
-      awards: Array.isArray(s.tournament.awards) ? s.tournament.awards : [],
-      lastPlayedDay: s.tournament.lastPlayedDay || null,
+    // Old saves only stored protein. Fill carbs/fat/fiber from the catalog when
+    // we can; leave the rest unknown so a missing food never crashes the log.
+    const migrated = s ? MightyNutrition.migrateState(s, findFood) : null;
+    if (migrated?.days) setDays(migrated.days);
+    if (migrated?.triedFoods) setTriedFoods(migrated.triedFoods);
+    if (migrated?.treasures) setTreasures(migrated.treasures);
+    if (migrated?.tournament) setTournament({
+      wins: migrated.tournament.wins || 0,
+      awards: Array.isArray(migrated.tournament.awards) ? migrated.tournament.awards : [],
+      lastPlayedDay: migrated.tournament.lastPlayedDay || null,
     });
     setHydrated(true);
   }, []);
@@ -359,14 +458,17 @@ function App() {
   const isToday = viewedDay === today;
   const dayData = days[viewedDay] || { log: [], goalCelebrated: false };
   const log = dayData.log || [];
-  const confirmedProtein = log.filter((e) => e.confirmed).reduce((s, e) => s + e.protein, 0);
+  const dayFuel = MightyNutrition.confirmedTotals(log);
+  const confirmedProtein = dayFuel.totals.protein;
   const pendingEntries = log.filter((e) => !e.confirmed);
   const pct = t.dailyGoal > 0 ? confirmedProtein / t.dailyGoal : 0;
   const reachedGoal = t.dailyGoal > 0 && confirmedProtein >= t.dailyGoal;
   // Tournament unlocks from *today's* confirmed protein (browsing past days doesn't lock it).
   const todayLog = (days[today] || { log: [] }).log || [];
-  const todayProtein = todayLog.filter((e) => e.confirmed).reduce((s, e) => s + e.protein, 0);
+  const todayFuel = MightyNutrition.confirmedTotals(todayLog);
+  const todayProtein = todayFuel.totals.protein;
   const tournamentUnlocked = t.dailyGoal > 0 && todayProtein >= t.dailyGoal;
+  const fuelGoals = { protein: t.dailyGoal, carbs: t.carbGoal, fat: t.fatGoal, fiber: t.fiberGoal };
   // Once-per-calendar-day gate (in addition to protein unlock).
   const tournamentPlayedToday = tournament.lastPlayedDay === today;
   const remainingToGoal = Math.max(0, Math.ceil(t.dailyGoal - todayProtein));
@@ -389,7 +491,11 @@ function App() {
   // Add a pending food (kid action, no PIN — counts only once confirmed)
   const addPending = useCallback((food) => {
     if (viewedDay !== today) setViewedDay(today);
-    const entry = { id: uid(), foodId: food.id, servings: 1, protein: food.protein, confirmed: false, ts: Date.now() };
+    const one = MightyNutrition.portionMacros(food, { servings: 1 });
+    const entry = {
+      id: uid(), foodId: food.id, servings: 1, confirmed: false, ts: Date.now(),
+      protein: one.protein, carbs: one.carbs, fat: one.fat, fiber: one.fiber,
+    };
     setDays((cur) => {
       const old = cur[today] || { log: [], goalCelebrated: false };
       return { ...cur, [today]: { ...old, log: [...old.log, entry] } };
@@ -415,16 +521,20 @@ function App() {
     });
   }, [t.kidName]);
 
-  const finalizeConfirm = useCallback((entryId, servings, protein) => {
+  const finalizeConfirm = useCallback((entryId, portion) => {
     const dd = days[today] || { log: [] };
     const entry = dd.log.find((e) => e.id === entryId);
     setConfirmEntry(null);
-    if (!entry) return;
+    if (!entry || !portion) return;
     const food = getFood(entry.foodId);
     const isNew = !triedFoods[entry.foodId];
     setDays((cur) => {
       const old = cur[today] || { log: [] };
-      return { ...cur, [today]: { ...old, log: old.log.map((e) => e.id === entryId ? { ...e, confirmed: true, servings, protein } : e) } };
+      return { ...cur, [today]: { ...old, log: old.log.map((e) => e.id === entryId ? {
+        ...e, confirmed: true,
+        servings: portion.servings, protein: portion.protein,
+        carbs: portion.carbs, fat: portion.fat, fiber: portion.fiber,
+      } : e) } };
     });
     if (isNew) {
       const tr = drawTreasure();
@@ -535,12 +645,18 @@ function App() {
           <section className="left-col">
             <Buddy pct={pct} grams={confirmedProtein} goal={t.dailyGoal} />
             <Meter grams={confirmedProtein} goal={t.dailyGoal} theme={theme} reached={reachedGoal} />
+            <MacroBoard
+              title={isToday ? "Today's fuel" : "That day's fuel"}
+              totals={dayFuel.totals}
+              unknown={dayFuel.unknown}
+              goals={fuelGoals}
+            />
             {reachedGoal ? (
               <div className="encourage win"><b>Goal smashed!</b> Buddy is mighty strong today. 🏆</div>
             ) : isToday ? (
               <div className="encourage"><b>{Math.max(0, Math.ceil(t.dailyGoal - confirmedProtein))}g</b> more protein to power up Buddy!</div>
             ) : (
-              <div className="encourage past">That day reached <b>{Math.round(confirmedProtein)} of {t.dailyGoal}g</b>.</div>
+              <div className="encourage past">That day reached <b>{MightyNutrition.formatGrams(confirmedProtein)} of {t.dailyGoal}g</b>.</div>
             )}
             <button className="add-food-cta" onClick={() => setView("foods")}>＋ Add a food</button>
             <TournamentHomeCard
@@ -569,14 +685,30 @@ function App() {
                 <ul className="log-list">
                   {[...log].reverse().map((e) => {
                     const food = getFood(e.foodId);
+                    const chip = (key, emoji, label) => {
+                      const known = MightyNutrition.isNonNeg(e[key]);
+                      return (
+                        <i className={`log-chip chip-${key}`} title={label}>
+                          {emoji} {known ? `${MightyNutrition.formatGrams(e[key])}g` : "—"}
+                        </i>
+                      );
+                    };
                     return (
                       <li key={e.id} className={`log-row${e.confirmed ? "" : " pending"}`}>
                         <span className="log-emoji">{food.emoji}</span>
                         <span className="log-name">{food.name}
                           {e.confirmed && <em className="log-serv"> · {e.servings} serving{e.servings === 1 ? "" : "s"}</em>}
+                          {e.confirmed && (
+                            <span className="log-macros">
+                              {chip("protein", "💪", "Protein")}
+                              {chip("carbs", "🍎", "Carbs")}
+                              {chip("fat", "🥑", "Fat")}
+                              {chip("fiber", "🌱", "Fiber")}
+                            </span>
+                          )}
                         </span>
                         {e.confirmed ? (
-                          <span className="log-g">+{round1(e.protein)}g</span>
+                          <span className="log-g">+{round1(e.protein || 0)}g</span>
                         ) : isToday ? (
                           <span className="log-actions">
                             <button className="log-confirm" onClick={() => requestConfirm(e)}>✓ Confirm</button>
@@ -602,6 +734,13 @@ function App() {
             <h3 className="col-h">Try a new food to unlock a treasure! 💎</h3>
             <div className="explore-progress">{triedCount} / {FOODS.length} foods discovered</div>
           </div>
+          <p className="energy-legend">
+            The color bar is how a food's <b>calories</b> split up —
+            <i className="leg-dot seg-protein" /> protein,
+            <i className="leg-dot seg-carbs" /> carbs,
+            <i className="leg-dot seg-fat" /> fat.
+            🌱 Fiber is its own number. It helps tummies and isn't part of the bar.
+          </p>
           <div className="cat-tabs">
             {FOOD_CATEGORIES.map((c) => (
               <button key={c.key} className={`cat-tab ${exploreCat === c.key ? "active" : ""}`} onClick={() => setExploreCat(c.key)}>
@@ -680,11 +819,23 @@ function App() {
         <TweakSection label="Profile" />
         <TweakText label="Name" value={t.kidName} placeholder="Your name" onChange={(v) => setTweak("kidName", v)} />
         {goalUnlocked ? (
-          <TweakSlider label="Daily protein goal" value={t.dailyGoal} min={10} max={100} step={5} unit=" g"
-            onChange={(v) => setTweak("dailyGoal", v)} />
+          <>
+            <TweakSlider label="Daily protein goal" value={t.dailyGoal} min={10} max={100} step={5} unit=" g"
+              onChange={(v) => setTweak("dailyGoal", v)} />
+            <TweakSlider label="Daily carbs goal" value={t.carbGoal} min={40} max={250} step={10} unit=" g"
+              onChange={(v) => setTweak("carbGoal", v)} />
+            <TweakSlider label="Daily fat goal" value={t.fatGoal} min={15} max={90} step={5} unit=" g"
+              onChange={(v) => setTweak("fatGoal", v)} />
+            <TweakSlider label="Daily fiber goal" value={t.fiberGoal} min={5} max={30} step={1} unit=" g"
+              onChange={(v) => setTweak("fiberGoal", v)} />
+            <p className="goal-hint">Only the protein goal powers Buddy and the tournament. The others are gentle targets.</p>
+          </>
         ) : (
           <div className="twk-row">
-            <div className="twk-lbl"><span>Daily protein goal</span><span className="twk-val">{t.dailyGoal} g</span></div>
+            <div className="twk-lbl"><span>Protein goal</span><span className="twk-val">{t.dailyGoal} g</span></div>
+            <div className="twk-lbl"><span>Carbs goal</span><span className="twk-val">{t.carbGoal} g</span></div>
+            <div className="twk-lbl"><span>Fat goal</span><span className="twk-val">{t.fatGoal} g</span></div>
+            <div className="twk-lbl"><span>Fiber goal</span><span className="twk-val">{t.fiberGoal} g</span></div>
             <button type="button" className="twk-btn secondary" onClick={requestGoalUnlock}>🔒 Unlock to change</button>
           </div>
         )}
