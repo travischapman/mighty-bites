@@ -1,11 +1,12 @@
 // Mighty Bites — service worker (cache-first app shell for offline + install).
-const CACHE = "mighty-bites-v3";
+const CACHE = "mighty-bites-v4";
 
 const CORE = [
   "./",
   "index.html",
   "styles.css",
   "manifest.webmanifest",
+  "nutrition.js",
   "foods.jsx",
   "treasures.jsx",
   "tweaks-panel.jsx",

@@ -1,0 +1,8 @@
+{
+  "name": "mighty-bites",
+  "private": true,
+  "description": "Kid-friendly protein and macro tracker. Static site, no build step.",
+  "scripts": {
+    "test": "node --test"
+  }
+}
